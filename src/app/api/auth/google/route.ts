@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getAuthUrl, isGoogleCalendarConfigured } from '@/lib/google-calendar';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const shouldRedirect = searchParams.get('redirect') === 'true';
     const url = getAuthUrl();
+
+    if (shouldRedirect) {
+      return NextResponse.redirect(url);
+    }
+
     const configured = isGoogleCalendarConfigured();
     return NextResponse.json({
       configured,

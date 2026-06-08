@@ -223,15 +223,31 @@ function StatusBanner({ status }: { status: CalendarStatus }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease }}
         className={cn(
-          'flex items-center gap-3 px-5 py-3',
+          'flex items-center justify-between gap-4 px-5 py-3',
           'bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)]',
           'rounded-2xl'
         )}
       >
-        <div className="w-2 h-2 rounded-full bg-emerald-400" />
-        <span className="text-sm text-[rgba(240,240,245,0.55)]">
-          Google Calendar connected
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-sm text-[rgba(240,240,245,0.55)]">
+            Google Calendar connected
+          </span>
+        </div>
+        {status.authUrl && (
+          <a
+            href={status.authUrl}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 h-[28px]',
+              'rounded-lg text-xs font-medium',
+              'bg-[rgba(255,255,255,0.06)] text-[rgba(240,240,245,0.7)] hover:bg-[#7C5CFC] hover:text-white',
+              'transition-all duration-200',
+              'min-h-[28px]'
+            )}
+          >
+            Reconnect
+          </a>
+        )}
       </motion.div>
     );
   }
