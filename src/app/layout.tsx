@@ -21,6 +21,9 @@ export const metadata: Metadata = {
     'consultation',
   ],
   authors: [{ name: 'Deepanshu Lathar' }],
+  icons: {
+    icon: '/favicon.svg',
+  },
   openGraph: {
     title: 'Private Meeting Desk — Deepanshu Lathar',
     description:
