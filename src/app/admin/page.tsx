@@ -341,19 +341,22 @@ export default function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
-  /* ---- Load admin config from localStorage ---- */
+  /* ---- Load admin config from server ---- */
   useEffect(() => {
     if (!mounted) return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
-      if (raw) {
-        const parsed: AdminConfig = JSON.parse(raw);
-        setActiveDays(parsed.activeDays ?? DEFAULT_CONFIG.activeDays);
-        setTimeSlots(parsed.timeSlots ?? DEFAULT_CONFIG.timeSlots);
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/admin/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.activeDays?.length) setActiveDays(data.activeDays);
+          if (data.timeSlots?.length) setTimeSlots(data.timeSlots);
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore corrupt data */
     }
+    fetchConfig();
   }, [mounted]);
 
   /* ---- Check Google Calendar status + fetch real meetings ---- */
@@ -480,14 +483,24 @@ export default function AdminPage() {
     setTimeSlots((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const [toastMessage, setToastMessage] = useState('');
+
   const handleSave = () => {
-    const config: AdminConfig = {
-      activeDays,
-      timeSlots: timeSlots.filter(Boolean),
-    };
-    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000);
+    const filteredSlots = timeSlots.filter(Boolean).sort();
+    const envTimeSlots = filteredSlots.join(',');
+    const envActiveDays = activeDays.join(',');
+
+    const envText = `TIME_SLOTS=${envTimeSlots}\nACTIVE_DAYS=${envActiveDays}`;
+
+    navigator.clipboard.writeText(envText).then(() => {
+      setToastMessage('Copied to clipboard! Paste these into your Vercel Environment Variables and redeploy.');
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 4000);
+    }).catch(() => {
+      setToastMessage(`Update Vercel env vars:\nTIME_SLOTS=${envTimeSlots}\nACTIVE_DAYS=${envActiveDays}`);
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 6000);
+    });
   };
 
   /* ---- Render gate ---- */
@@ -915,7 +928,7 @@ export default function AdminPage() {
       </div>
 
       {/* Toast */}
-      <Toast message="Settings saved" visible={toastVisible} />
+      <Toast message={toastMessage} visible={toastVisible} />
     </div>
   );
 }

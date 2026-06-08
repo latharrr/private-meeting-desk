@@ -30,38 +30,25 @@ export default function BookingCard() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  // Load admin config for available days
+  // Load config from server (environment variables)
   useEffect(() => {
-    try {
-      const config = localStorage.getItem('pmd-admin-config');
-      if (config) {
-        const parsed = JSON.parse(config);
-
-        // Handle day conversion (admin stores names, calendar expects numbers)
-        if (parsed.activeDays || parsed.availableDays) {
-          const dayNameToNumber: Record<string, number> = {
-            Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-          };
-          const days = parsed.activeDays || parsed.availableDays;
-          if (Array.isArray(days) && days.length > 0) {
-            if (typeof days[0] === 'string') {
-              const converted = days
-                .map((d: string) => dayNameToNumber[d])
-                .filter((n: number | undefined) => n !== undefined);
-              setAvailableDays(converted);
-            } else {
-              setAvailableDays(days);
-            }
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/admin/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.activeDayNumbers?.length) {
+            setAvailableDays(data.activeDayNumbers);
+          }
+          if (data.timeSlots?.length) {
+            setTimeSlots(data.timeSlots);
           }
         }
-
-        if (parsed.timeSlots?.length) {
-          setTimeSlots(parsed.timeSlots);
-        }
+      } catch {
+        // Use defaults
       }
-    } catch {
-      // Use defaults
     }
+    fetchConfig();
   }, []);
 
   // Fetch real availability when date changes

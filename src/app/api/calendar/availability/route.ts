@@ -3,7 +3,7 @@ import {
   getAvailableSlots,
   isGoogleCalendarConfigured,
 } from '@/lib/google-calendar';
-import { DEFAULT_TIME_SLOTS } from '@/lib/calendar-utils';
+import { getServerConfig } from '@/app/api/admin/config/route';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,7 +25,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const slots = await getAvailableSlots(date, DEFAULT_TIME_SLOTS);
+    const { timeSlots } = getServerConfig();
+    const slots = await getAvailableSlots(date, timeSlots);
     const configured = isGoogleCalendarConfigured();
 
     return NextResponse.json({ slots, configured });
