@@ -195,7 +195,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
 /*  Status Banner                                                      */
 /* ------------------------------------------------------------------ */
 
-function StatusBanner({ status }: { status: CalendarStatus }) {
+function StatusBanner({ status, error }: { status: CalendarStatus; error?: string | null }) {
   if (status.loading) {
     return (
       <motion.div
@@ -218,37 +218,56 @@ function StatusBanner({ status }: { status: CalendarStatus }) {
 
   if (status.connected) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease }}
-        className={cn(
-          'flex items-center justify-between gap-4 px-5 py-3',
-          'bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)]',
-          'rounded-2xl'
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-sm text-[rgba(240,240,245,0.55)]">
-            Google Calendar connected
-          </span>
-        </div>
-        {status.authUrl && (
-          <a
-            href={status.authUrl}
+      <div className="space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease }}
+          className={cn(
+            'flex items-center justify-between gap-4 px-5 py-3',
+            'bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)]',
+            'rounded-2xl'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-sm text-[rgba(240,240,245,0.55)]">
+              Google Calendar connected
+            </span>
+          </div>
+          {status.authUrl && (
+            <a
+              href={status.authUrl}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 h-[28px]',
+                'rounded-lg text-xs font-medium',
+                'bg-[rgba(255,255,255,0.06)] text-[rgba(240,240,245,0.7)] hover:bg-[#7C5CFC] hover:text-white',
+                'transition-all duration-200',
+                'min-h-[28px]'
+              )}
+            >
+              Reconnect
+            </a>
+          )}
+        </motion.div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 h-[28px]',
-              'rounded-lg text-xs font-medium',
-              'bg-[rgba(255,255,255,0.06)] text-[rgba(240,240,245,0.7)] hover:bg-[#7C5CFC] hover:text-white',
-              'transition-all duration-200',
-              'min-h-[28px]'
+              'px-5 py-4 rounded-2xl text-sm',
+              'bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] text-[#EF4444]'
             )}
           >
-            Reconnect
-          </a>
+            <div className="font-semibold mb-1">Google Calendar Sync Error:</div>
+            <div className="text-xs opacity-90 font-mono leading-relaxed">{error}</div>
+            <div className="text-xs opacity-75 mt-2">
+              Note: This indicates your Google API session has expired or is invalid. Please click <strong>Reconnect</strong> above to authorize again, copy the new refresh token, and update it in Vercel.
+            </div>
+          </motion.div>
         )}
-      </motion.div>
+      </div>
     );
   }
 
@@ -311,6 +330,7 @@ export default function AdminPage() {
     loading: true,
   });
   const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
   /* ---- Mount ---- */
   useEffect(() => {
@@ -356,17 +376,22 @@ export default function AdminPage() {
               const meetingsRes = await fetch('/api/calendar/meetings');
               if (meetingsRes.ok) {
                 const meetingsData = await meetingsRes.json();
-                const allMeetings = [
-                  ...(meetingsData.today || []),
-                  ...(meetingsData.upcoming || []),
-                ];
-                if (allMeetings.length > 0) {
+                if (meetingsData.error) {
+                  setCalendarError(meetingsData.error);
+                } else {
+                  setCalendarError(null);
+                  const allMeetings = [
+                    ...(meetingsData.today || []),
+                    ...(meetingsData.upcoming || []),
+                  ];
                   setBookings(allMeetings);
                   return; // Don't fall back to localStorage
                 }
+              } else {
+                setCalendarError('Failed to load meetings from Google API (Response status: ' + meetingsRes.status + ')');
               }
-            } catch {
-              // Fall through to localStorage
+            } catch (err: any) {
+              setCalendarError(err.message || 'Failed to connect to Google API');
             }
           }
         } else {
@@ -498,7 +523,7 @@ export default function AdminPage() {
 
       <div className="max-w-4xl mx-auto px-6 space-y-8">
         {/* ===== Section 1: Status Banner ===== */}
-        <StatusBanner status={calendarStatus} />
+        <StatusBanner status={calendarStatus} error={calendarError} />
 
         {/* ===== Section 2: Today's Meetings ===== */}
         <motion.section

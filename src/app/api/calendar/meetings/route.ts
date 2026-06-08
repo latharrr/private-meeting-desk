@@ -99,11 +99,13 @@ export async function GET() {
         .filter((e) => !isTodayInTz(e.start))
         .map(formatEvent),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Meetings fetch error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch meetings' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      configured: true,
+      error: error.message || 'Failed to fetch meetings from Google Calendar',
+      today: [],
+      upcoming: [],
+    });
   }
 }

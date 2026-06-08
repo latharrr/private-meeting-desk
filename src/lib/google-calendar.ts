@@ -303,7 +303,7 @@ export async function getUpcomingEvents(
       }));
   } catch (error) {
     console.error('Google Calendar list error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -351,6 +351,6 @@ export async function getTodayEvents(
       }));
   } catch (error) {
     console.error('Google Calendar today events error:', error);
-    return [];
+    throw error;
   }
 }
