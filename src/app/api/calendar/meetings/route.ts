@@ -17,10 +17,9 @@ export async function GET() {
   const tz = process.env.CALENDAR_TIMEZONE || 'Asia/Kolkata';
 
   try {
-    const [todayEvents, upcomingEvents] = await Promise.all([
-      getTodayEvents(),
-      getUpcomingEvents(25),
-    ]);
+    // Query events from 24 hours ago to cover the entire local day for "today" in any timezone
+    const queryTimeMin = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const upcomingEvents = await getUpcomingEvents(50, 'primary', queryTimeMin);
 
     // Convert a UTC date to local date/time components in the configured timezone
     const toLocalParts = (isoString: string) => {
@@ -46,22 +45,18 @@ export async function GET() {
       };
     };
 
-    // Check if event is today in the configured timezone
-    const isTodayInTz = (isoString: string) => {
-      const now = new Date();
-      const todayParts = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).formatToParts(now);
+    // Get current date string in the configured timezone
+    const now = new Date();
+    const todayParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
 
-      const get = (type: string) =>
-        todayParts.find((p) => p.type === type)?.value || '';
-      const todayStr = `${get('year')}-${get('month')}-${get('day')}`;
-
-      return toLocalParts(isoString).date === todayStr;
-    };
+    const getTodayPart = (type: string) =>
+      todayParts.find((p) => p.type === type)?.value || '';
+    const todayStr = `${getTodayPart('year')}-${getTodayPart('month')}-${getTodayPart('day')}`;
 
     // Transform calendar events into admin-friendly format
     const formatEvent = (event: {
@@ -92,12 +87,19 @@ export async function GET() {
       };
     };
 
+    const formattedEvents = upcomingEvents.map(formatEvent);
+
+    // Partition the events
+    // today: events happening today
+    // upcoming: events happening in the future (after today)
+    // We filter out any events that happened on previous days (before today)
+    const todayMeetings = formattedEvents.filter((e) => e.date === todayStr);
+    const upcomingMeetings = formattedEvents.filter((e) => e.date > todayStr);
+
     return NextResponse.json({
       configured: true,
-      today: todayEvents.map(formatEvent),
-      upcoming: upcomingEvents
-        .filter((e) => !isTodayInTz(e.start))
-        .map(formatEvent),
+      today: todayMeetings,
+      upcoming: upcomingMeetings,
     });
   } catch (error: any) {
     console.error('Meetings fetch error:', error);

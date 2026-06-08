@@ -265,26 +265,27 @@ export interface CalendarEvent {
  */
 export async function getUpcomingEvents(
   maxResults: number = 25,
-  calendarId: string = 'primary'
+  calendarId: string = 'primary',
+  timeMin?: string
 ): Promise<CalendarEvent[]> {
   if (!isGoogleCalendarConfigured()) {
     return [];
   }
 
   const calendar = getCalendar();
-  const now = new Date();
+  const queryTimeMin = timeMin || new Date().toISOString();
 
   try {
     const response = await calendar.events.list({
       calendarId,
-      timeMin: now.toISOString(),
+      timeMin: queryTimeMin,
       maxResults,
       singleEvents: true,
       orderBy: 'startTime',
     });
 
     return (response.data.items || [])
-      .filter(event => event.summary?.includes('Meeting'))
+      .filter(event => event.summary?.toLowerCase().includes('meeting'))
       .map(event => ({
         id: event.id || '',
         summary: event.summary || '',
