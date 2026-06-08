@@ -69,6 +69,31 @@ export interface AvailableSlot {
  * Get available time slots for a specific date.
  * Queries Google Calendar's freebusy API and removes conflicting slots.
  */
+/**
+ * Helper to get the timezone offset string (e.g. "+05:30" or "-04:00") for a specific date and timezone.
+ */
+function getTimezoneOffsetString(timeZone: string, date: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(date);
+    
+    const offsetPart = parts.find((p) => p.type === 'timeZoneName')?.value || 'GMT+00:00';
+    const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
+    if (!match) return '+00:00';
+    
+    const sign = match[1];
+    const hours = match[2].padStart(2, '0');
+    const minutes = (match[3] || '00').padStart(2, '0');
+    
+    return `${sign}${hours}:${minutes}`;
+  } catch (err) {
+    console.error('Failed to get timezone offset string:', err);
+    return '+00:00';
+  }
+}
+
 export async function getAvailableSlots(
   date: string, // "2026-06-15"
   configuredSlots: string[], // ["09:00", "09:30", "10:00", ...]
@@ -83,9 +108,12 @@ export async function getAvailableSlots(
   const calendar = getCalendar();
   const tz = process.env.CALENDAR_TIMEZONE || 'Asia/Kolkata';
 
-  // Build time range for the full day
-  const dayStart = new Date(`${date}T00:00:00`);
-  const dayEnd = new Date(`${date}T23:59:59`);
+  // Get timezone offset dynamically
+  const offset = getTimezoneOffsetString(tz, new Date(`${date}T12:00:00`));
+
+  // Build time range for the full day in target timezone
+  const dayStart = new Date(`${date}T00:00:00${offset}`);
+  const dayEnd = new Date(`${date}T23:59:59${offset}`);
 
   try {
     const freebusyResponse = await calendar.freebusy.query({
@@ -100,7 +128,8 @@ export async function getAvailableSlots(
     const busySlots = freebusyResponse.data.calendars?.[calendarId]?.busy || [];
 
     return configuredSlots.map(slotTime => {
-      const slotStart = new Date(`${date}T${slotTime}:00`);
+      // Build slot start/end timezone-safely
+      const slotStart = new Date(`${date}T${slotTime}:00${offset}`);
       const slotEnd = new Date(slotStart.getTime() + meetingDurationMinutes * 60 * 1000);
 
       // Check if slot overlaps with any busy period
