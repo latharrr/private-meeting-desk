@@ -14,6 +14,7 @@ import {
   TrendingUp,
   ExternalLink,
   Video,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -293,10 +294,15 @@ export default function AdminPage() {
     connected: false,
     loading: true,
   });
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
 
   /* ---- Mount ---- */
   useEffect(() => {
     setMounted(true);
+    try {
+      const raw = localStorage.getItem('pmd-dismissed');
+      if (raw) setDismissedKeys(new Set(JSON.parse(raw)));
+    } catch { /* ignore */ }
   }, []);
 
   /* ---- Load admin config from localStorage ---- */
@@ -375,13 +381,26 @@ export default function AdminPage() {
     checkCalendarAndFetchMeetings();
   }, [mounted]);
 
+  /* ---- Helpers ---- */
+  const meetingKey = (b: Booking) => `${b.date}_${b.time}_${b.email}`;
+
+  const dismissMeeting = useCallback((b: Booking) => {
+    const key = `${b.date}_${b.time}_${b.email}`;
+    setDismissedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      localStorage.setItem('pmd-dismissed', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
   /* ---- Derived data ---- */
   const todayBookings = bookings
-    .filter((b) => isToday(b.date))
+    .filter((b) => isToday(b.date) && !dismissedKeys.has(meetingKey(b)))
     .sort((a, b) => (a.time > b.time ? 1 : -1));
 
   const upcomingBookings = bookings
-    .filter((b) => isFuture(b.date, b.time) && !isToday(b.date))
+    .filter((b) => isFuture(b.date, b.time) && !isToday(b.date) && !dismissedKeys.has(meetingKey(b)))
     .sort((a, b) => {
       const dtA = new Date(`${a.date}T${a.time}`);
       const dtB = new Date(`${b.date}T${b.time}`);
@@ -522,25 +541,42 @@ export default function AdminPage() {
                         )}
                       </div>
                     </div>
-                    {booking.meetLink && (
-                      <a
-                        href={booking.meetLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div className="flex items-center gap-2 shrink-0">
+                      {booking.meetLink && (
+                        <a
+                          href={booking.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'flex items-center gap-1.5 px-3 h-[36px]',
+                            'rounded-xl text-xs font-medium',
+                            'text-[#7C5CFC] hover:text-[#A48CFC]',
+                            'bg-[rgba(124,92,252,0.08)]',
+                            'transition-colors duration-200',
+                            'min-h-[36px] shrink-0'
+                          )}
+                          aria-label={`Join meeting with ${booking.name}`}
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Join
+                        </a>
+                      )}
+                      <button
+                        onClick={() => dismissMeeting(booking)}
                         className={cn(
                           'flex items-center gap-1.5 px-3 h-[36px]',
                           'rounded-xl text-xs font-medium',
-                          'text-[#7C5CFC] hover:text-[#A48CFC]',
-                          'bg-[rgba(124,92,252,0.08)]',
+                          'text-emerald-400 hover:text-emerald-300',
+                          'bg-[rgba(52,211,153,0.08)] hover:bg-[rgba(52,211,153,0.14)]',
                           'transition-colors duration-200',
                           'min-h-[36px] shrink-0'
                         )}
-                        aria-label={`Join meeting with ${booking.name}`}
+                        aria-label={`Mark meeting with ${booking.name} as done`}
                       >
-                        <Video className="w-3.5 h-3.5" />
-                        Join
-                      </a>
-                    )}
+                        <Check className="w-3.5 h-3.5" />
+                        Done
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -603,23 +639,40 @@ export default function AdminPage() {
                         )}
                       </div>
                     </div>
-                    {booking.meetLink && (
-                      <a
-                        href={booking.meetLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div className="flex items-center gap-2 shrink-0">
+                      {booking.meetLink && (
+                        <a
+                          href={booking.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'flex items-center gap-1.5 text-xs font-medium',
+                            'text-[#7C5CFC] hover:text-[#A48CFC]',
+                            'transition-colors duration-200',
+                            'min-h-[44px] shrink-0'
+                          )}
+                          aria-label={`Meeting link for ${booking.name}`}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Meet link
+                        </a>
+                      )}
+                      <button
+                        onClick={() => dismissMeeting(booking)}
                         className={cn(
-                          'flex items-center gap-1.5 text-xs font-medium',
-                          'text-[#7C5CFC] hover:text-[#A48CFC]',
+                          'flex items-center gap-1.5 px-3 h-[36px]',
+                          'rounded-xl text-xs font-medium',
+                          'text-emerald-400 hover:text-emerald-300',
+                          'bg-[rgba(52,211,153,0.08)] hover:bg-[rgba(52,211,153,0.14)]',
                           'transition-colors duration-200',
-                          'min-h-[44px] shrink-0'
+                          'min-h-[36px] shrink-0'
                         )}
-                        aria-label={`Meeting link for ${booking.name}`}
+                        aria-label={`Mark meeting with ${booking.name} as done`}
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Meet link
-                      </a>
-                    )}
+                        <Check className="w-3.5 h-3.5" />
+                        Done
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
