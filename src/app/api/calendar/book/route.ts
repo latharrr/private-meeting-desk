@@ -41,18 +41,24 @@ export async function POST(request: Request) {
 
     if (isGoogleCalendarConfigured()) {
       // ── Real booking via Google Calendar ──
-      const result = await createCalendarEvent({
-        date,
-        time,
-        attendeeName: name,
-        attendeeEmail: email,
-        topic: body.chipSelection ? `${body.chipSelection} — ${topic}` : topic,
-        linkedinOrWebsite: body.linkedinOrWebsite,
-      });
+      try {
+        const result = await createCalendarEvent({
+          date,
+          time,
+          attendeeName: name,
+          attendeeEmail: email,
+          topic: body.chipSelection ? `${body.chipSelection} — ${topic}` : topic,
+          linkedinOrWebsite: body.linkedinOrWebsite,
+        });
 
-      meetLink = result.meetLink;
-      eventId = result.eventId;
-      htmlLink = result.htmlLink;
+        meetLink = result.meetLink;
+        eventId = result.eventId;
+        htmlLink = result.htmlLink;
+      } catch (calError) {
+        console.error('Failed to create Google Calendar event, falling back to email-only mode:', calError);
+        meetLink = generateFakeMeetLink();
+        demo = true;
+      }
     } else {
       // ── Demo mode ──
       meetLink = generateFakeMeetLink();
