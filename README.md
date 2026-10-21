@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://meet.deepanshulathar.dev">Live Demo</a> ·
+  <a href="https://meet.deepanshulathar.com">Live Demo</a> ·
   <a href="#getting-started">Getting Started</a> ·
   <a href="#environment-variables">Configuration</a>
 </p>
@@ -236,7 +236,7 @@ Visitor sees confirmation screen with Meet link + "Add to Calendar" button
 ## 🧑‍💻 Author
 
 **Deepanshu Lathar**  
-[meet.deepanshulathar.dev](https://meet.deepanshulathar.dev)
+[meet.deepanshulathar.com](https://meet.deepanshulathar.com)
 
 ---
 
